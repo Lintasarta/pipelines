@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9099:9099"
+    environment:
+      - MINIMUM_BUILD="true"
+    volumes:
+      - .:/app
+    command: ["bash", "start.sh"]
