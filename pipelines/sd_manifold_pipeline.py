@@ -29,7 +29,6 @@ class Pipeline:
     def __init__(self):
         # self.type = "manifold"
         self.name = "ImageGen"
-
         self.valves = self.Valves()
 
     async def on_startup(self) -> None:
