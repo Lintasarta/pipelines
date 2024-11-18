@@ -1,22 +1,14 @@
+"""A manifold to integrate OpenAI's ImageGen models into Open-WebUI"""
 import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
-import requests
-import json
-import base64
+
 from typing import List, Union, Generator, Iterator
+
 from pydantic import BaseModel
+import base64
+from openai import OpenAI
 
 from utils.pipelines.decorator import log_time
-
-@log_time
-def text2img(host: str, params: dict) -> dict:
-    """
-    text to image
-    """
-    result = requests.post(url=f"{host}/v1/generation/text-to-image",
-                           data=json.dumps(params),
-                           headers={"Content-Type": "application/json"})
-    return result.json()
 
 class Pipeline:
     """OpenAI ImageGen pipeline"""
@@ -24,10 +16,10 @@ class Pipeline:
     class Valves(BaseModel):
         """Options to change from the WebUI"""
 
-        HOST: str = "http://10.1.60.62:8888"
-        # NUM_IMAGES: int = 1
-        PERFORMANCE_SELECTION: str = "Quality"
-        IMAGE_RATIO: str = "1024*1024"
+        OPENAI_API_BASE_URL: str = "http://10.1.60.56:8080/v1"
+        OPENAI_API_KEY: str = "EMPTY"
+        IMAGE_SIZE: str = "1024x1024"
+        NUM_IMAGES: int = 1
         S3_BUCKET_NAME: str = "ai-cloudeka"
         S3_URL: str = "https://parahu.box.cloudeka.id"
         S3_REGION: str = "parahu"
@@ -35,9 +27,15 @@ class Pipeline:
         S3_SECRET_KEY: str = "bVrrv1QbD/1Ta98qH62KLmjy28WIa/52CXgJznnB"
 
     def __init__(self):
-        # self.type = "manifold"
-        self.name = "Enhanced Stable Diffusion"
+        self.name = "Vanilla Stable Diffusion"
+
         self.valves = self.Valves()
+        self.client = OpenAI(
+            base_url=self.valves.OPENAI_API_BASE_URL,
+            api_key=self.valves.OPENAI_API_KEY,
+        )
+
+        self.pipelines = self.get_openai_assistants()
         self.s3_client = boto3.client(
             's3',
             region_name=self.valves.S3_REGION,
@@ -45,6 +43,19 @@ class Pipeline:
             aws_secret_access_key=self.valves.S3_SECRET_KEY,
             endpoint_url=self.valves.S3_URL
         )
+    @log_time
+    def text2img(self,user_message) -> dict:
+        """
+        text to image
+        """
+        response = self.client.images.generate(
+                model="juggernaut_xl",
+                prompt=user_message,
+                size=self.valves.IMAGE_SIZE,
+                n=self.valves.NUM_IMAGES,
+                response_format="b64_json")
+        return response.data
+        
 
     async def on_startup(self) -> None:
         """This function is called when the server is started."""
@@ -57,7 +68,32 @@ class Pipeline:
     async def on_valves_updated(self):
         """This function is called when the valves are updated."""
         print(f"on_valves_updated:{__name__}")
+        self.client = OpenAI(
+            base_url=self.valves.OPENAI_API_BASE_URL,
+            api_key=self.valves.OPENAI_API_KEY,
+        )
+        self.pipelines = self.get_openai_assistants()
 
+    def get_openai_assistants(self) -> List[dict]:
+        """Get the available ImageGen models from OpenAI
+
+        Returns:
+            List[dict]: The list of ImageGen models
+        """
+
+        if self.valves.OPENAI_API_KEY:
+            models = self.client.models.list()
+            print(models)
+            return [
+                {
+                    "id": "juggernaut_xl",
+                    "name": "juggernaut_xl",
+                }
+                for model in models
+            ]
+
+        return []
+    
     @log_time
     def upload_image_to_s3(self, base64_image: str, bucket_name: str, object_name: str) -> str:
         """Upload a base64-encoded image to an S3 bucket and return a presigned URL."""
@@ -86,19 +122,13 @@ class Pipeline:
     ) -> Union[str, Generator, Iterator]:
         print(f"pipe:{__name__}")
 
-        response = text2img(host=self.valves.HOST, params={
-            "prompt": user_message,
-            "performance_selection": self.valves.PERFORMANCE_SELECTION,
-            "async_process": False,
-            "require_base64": True,
-            "aspect_ratios_selection": self.valves.IMAGE_RATIO
-        })
+        response = self.text2img(user_message=user_message)
         message = ""
         for image in response:
-            if image["base64"]:
+            if image.b64_json:
                 # Upload the image to S3 and get the presigned URL
                 object_name = f"images/{user_message.replace(' ', '_')}.png"
-                image_url = self.upload_image_to_s3(image['base64'], self.valves.S3_BUCKET_NAME, object_name)
+                image_url = self.upload_image_to_s3(image.b64_json, self.valves.S3_BUCKET_NAME, object_name)
                 if image_url:
                     message += "![image](" + image_url + ")\n"
         yield message
