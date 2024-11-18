@@ -25,6 +25,7 @@ class Pipeline:
         HOST: str = "http://10.1.60.62:8888"
         # NUM_IMAGES: int = 1
         PERFORMANCE_SELECTION: str = "Quality"
+        IMAGE_RATIO: str = "1024*1024"
 
     def __init__(self):
         # self.type = "manifold"
@@ -52,7 +53,8 @@ class Pipeline:
         response = text2img(host=self.valves.HOST,params={
                     "prompt": user_message,
                     "performance_selection":self.valves.PERFORMANCE_SELECTION,
-                    "async_process": False})
+                    "async_process": False,
+                    "aspect_ratios_selection":self.valves.IMAGE_RATIO})
         message = ""
         for image in response:
             if image["url"]:
