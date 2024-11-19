@@ -7,6 +7,7 @@ from typing import List, Union, Generator, Iterator
 from pydantic import BaseModel
 
 from utils.pipelines.decorator import log_time
+from utils.fooocus.utils import PromptExtractor,prompt_cleaner
 
 @log_time
 def text2img(host: str, params: dict) -> dict:
@@ -45,7 +46,7 @@ class Pipeline:
             aws_secret_access_key=self.valves.S3_SECRET_KEY,
             endpoint_url=self.valves.S3_URL
         )
-
+        self.prompt_extractor = PromptExtractor()
     async def on_startup(self) -> None:
         """This function is called when the server is started."""
         print(f"on_startup:{__name__}")
@@ -86,9 +87,14 @@ class Pipeline:
     ) -> Union[str, Generator, Iterator]:
         print(f"pipe:{__name__}")
 
+        styles = self.prompt_extractor.style_extractor(user_message)
+
+        user_message = prompt_cleaner(user_message)
+        print(f"user message: {user_message}")
         response = text2img(host=self.valves.HOST, params={
             "prompt": user_message,
             "performance_selection": self.valves.PERFORMANCE_SELECTION,
+            "style_selections":styles,
             "async_process": False,
             "require_base64": True,
             "aspect_ratios_selection": self.valves.IMAGE_RATIO
