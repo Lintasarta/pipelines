@@ -24,7 +24,7 @@ class Pipeline:
     class Valves(BaseModel):
         """Options to change from the WebUI"""
 
-        HOST: str = "http://10.1.60.62:8888"
+        HOST: str = "http://10.250.150.187:8888"
         # NUM_IMAGES: int = 1
         PERFORMANCE_SELECTION: str = "Quality"
         IMAGE_RATIO: str = "1024*1024"

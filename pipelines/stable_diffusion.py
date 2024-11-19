@@ -16,7 +16,7 @@ class Pipeline:
     class Valves(BaseModel):
         """Options to change from the WebUI"""
 
-        OPENAI_API_BASE_URL: str = "http://10.1.60.56:8080/v1"
+        OPENAI_API_BASE_URL: str = "http://10.250.2.40:8080/v1"
         OPENAI_API_KEY: str = "EMPTY"
         IMAGE_SIZE: str = "1024x1024"
         NUM_IMAGES: int = 1
