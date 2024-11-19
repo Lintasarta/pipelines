@@ -111,7 +111,7 @@ class Pipeline:
             # Upload the image to S3
             self.s3_client.put_object(Bucket=bucket_name, Key=object_name, Body=image_data, ContentType='image/png')
             # Generate a presigned URL
-            url = self.s3_client.generate_presigned_url('get_object', Params={'Bucket': bucket_name, 'Key': object_name}, ExpiresIn=3600)
+            url = self.s3_client.generate_presigned_url('get_object', Params={'Bucket': bucket_name, 'Key': object_name})
             return url
         except (base64.binascii.Error, NoCredentialsError, PartialCredentialsError) as e:
             print(f"Error uploading image to S3: {e}")
