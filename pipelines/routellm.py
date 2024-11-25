@@ -3,7 +3,18 @@ from schemas import OpenAIChatMessage
 from pydantic import BaseModel
 import json
 import requests
+import re
 
+def clean_message_content(body):
+    # Regular expression to match `\n\n` followed by `` `Model used: ...` ``
+    pattern = re.compile(r'\n\n`Model used: .+?`')
+    
+    # Iterate through each message in the 'messages' list
+    for message in body['messages']:
+        # Remove the pattern from the 'content' of the message
+        message['content'] = pattern.sub('', message['content'])
+    
+    return body
 
 class Pipeline:
     class Valves(BaseModel):
@@ -40,11 +51,10 @@ class Pipeline:
 
         OPENAI_API_KEY = self.valves.OPENAI_API_KEY
         MODEL = f"router-mf-{self.valves.THRESHOLD}"
-
         headers = {}
         headers["Authorization"] = f"Bearer {OPENAI_API_KEY}"
         headers["Content-Type"] = "application/json"
-
+        body = clean_message_content(body)
         payload = {**body, "model": MODEL}
 
         if "user" in payload:
