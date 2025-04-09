@@ -1,0 +1,2 @@
+docker build . -t ghcr.io/lintasarta/open-webui-pipelines:latest
+docker push ghcr.io/lintasarta/open-webui-pipelines:latest   
